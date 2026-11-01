@@ -49,12 +49,15 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 python examples/demo.py      # narrated end-to-end walkthrough, no API key needed
+python examples/web_app.py   # local browser chat at http://127.0.0.1:8000
 python -m pytest -q          # full test suite
 python -m tests.eval_suite   # the regression eval suite as a standalone deploy gate
 ```
 
 No environment variables are required for any of the above -- `MockLLM`
 and `HashEmbedder` make the whole stack deterministic and offline.
+The browser app uses the same offline demo agent and sample HR policies.
+It listens on localhost only; press Ctrl+C in the terminal to stop it.
 
 ### Using a real model
 

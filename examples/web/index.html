@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>Company AI Agent</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #20232b;
+      background: #f5f6f8;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px 16px; }
+    .app { display: flex; flex-direction: column; width: min(820px, 100%); height: min(780px, calc(100vh - 56px)); min-height: 500px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; border-radius: 20px; box-shadow: 0 18px 55px #1e293b12; }
+    header { display: flex; align-items: center; gap: 13px; padding: 20px 24px; border-bottom: 1px solid #eceef1; }
+    .mark { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 14px; color: #fff; background: #245c4b; font-size: 19px; font-weight: 700; }
+    h1 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .subtitle { display: flex; align-items: center; gap: 7px; margin: 4px 0 0; color: #747985; font-size: 12px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #3aa779; }
+    .chat { flex: 1; overflow-y: auto; padding: 28px 24px; }
+    .welcome { max-width: 510px; margin: 48px auto 30px; text-align: center; }
+    .welcome h2 { margin: 0 0 10px; font-size: clamp(22px, 4vw, 29px); letter-spacing: -.04em; }
+    .welcome p { margin: 0; color: #747985; font-size: 14px; line-height: 1.65; }
+    .suggestions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 21px; }
+    .suggestion { padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; color: #505661; font: inherit; font-size: 12px; cursor: pointer; }
+    .suggestion:hover { border-color: #9abdaf; color: #245c4b; }
+    .message { width: fit-content; max-width: min(570px, 88%); margin: 0 0 16px; padding: 12px 15px; border-radius: 15px; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .message.user { margin-left: auto; border-bottom-right-radius: 5px; background: #245c4b; color: white; }
+    .message.assistant { border: 1px solid #eceef1; border-bottom-left-radius: 5px; background: #fafbfc; color: #292d35; }
+    .meta { margin: -9px 0 16px 3px; color: #858a94; font-size: 11px; }
+    .error { display: none; margin: 0 24px 10px; color: #a53333; font-size: 12px; }
+    form { display: flex; align-items: flex-end; gap: 10px; padding: 16px 20px 19px; border-top: 1px solid #eceef1; }
+    textarea { flex: 1; min-height: 46px; max-height: 130px; resize: vertical; padding: 13px 14px; border: 1px solid #e1e4e8; border-radius: 13px; outline: none; font: inherit; font-size: 14px; line-height: 1.45; }
+    textarea:focus { border-color: #6a9c88; box-shadow: 0 0 0 3px #245c4b12; }
+    .send { height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: #245c4b; color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .send:hover { background: #194b3b; }
+    .send:disabled { opacity: .6; cursor: wait; }
+    .footnote { margin: 0; padding: 0 20px 13px; color: #969aa2; text-align: center; font-size: 10px; }
+    @media (max-width: 560px) { body { padding: 0; } .app { height: 100vh; min-height: 0; border: 0; border-radius: 0; } header { padding: 16px; } .chat { padding: 20px 16px; } .welcome { margin-top: 34px; } form { padding: 13px 12px; } .send { padding: 0 14px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="mark" aria-hidden="true">A</div>
+      <div>
+        <h1>Company AI Agent</h1>
+        <p class="subtitle"><span class="dot"></span> Online · Offline demo</p>
+      </div>
+    </header>
+    <section class="chat" id="chat" aria-live="polite">
+      <div class="welcome" id="welcome">
+        <h2>How can I help?</h2>
+        <p>Ask a question about company policies, or try a leave request. The demo agent runs locally with sample HR data.</p>
+        <div class="suggestions">
+          <button class="suggestion" type="button">How many days of annual leave do I get?</button>
+          <button class="suggestion" type="button">What is the IT device policy?</button>
+          <button class="suggestion" type="button">Please apply my leave for 2-4 Nov</button>
+        </div>
+      </div>
+    </section>
+    <p class="error" id="error" role="alert"></p>
+    <form id="form">
+      <textarea id="input" aria-label="Message" placeholder="Message the agent…" maxlength="8000" required></textarea>
+      <button class="send" id="send" type="submit">Send</button>
+    </form>
+    <p class="footnote">Demo assistant · Responses use the project's local mock model and sample policies</p>
+  </main>
+  <script>
+    const chat = document.querySelector("#chat");
+    const form = document.querySelector("#form");
+    const input = document.querySelector("#input");
+    const send = document.querySelector("#send");
+    const error = document.querySelector("#error");
+
+    function addMessage(text, kind) {
+      const message = document.createElement("div");
+      message.className = `message ${kind}`;
+      message.textContent = text;
+      chat.append(message);
+      return message;
+    }
+
+    document.querySelectorAll(".suggestion").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = button.textContent;
+        form.requestSubmit();
+      });
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text || send.disabled) return;
+
+      document.querySelector("#welcome")?.remove();
+      addMessage(text, "user");
+      input.value = "";
+      error.style.display = "none";
+      send.disabled = true;
+      send.textContent = "…";
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "The agent request failed.");
+
+        addMessage(data.content, "assistant");
+        const details = [];
+        if (data.retrieval_sources.length) details.push(`Sources: ${[...new Set(data.retrieval_sources)].join(", ")}`);
+        if (data.cache_hit) details.push("Answered from cache");
+        if (data.guardrail_flagged) details.push("Guardrail flagged this message");
+        if (details.length) {
+          const meta = document.createElement("p");
+          meta.className = "meta";
+          meta.textContent = details.join(" · ");
+          chat.append(meta);
+        }
+      } catch (requestError) {
+        error.textContent = requestError.message;
+        error.style.display = "block";
+      } finally {
+        send.disabled = false;
+        send.textContent = "Send";
+        input.focus();
+        chat.scrollTop = chat.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>
