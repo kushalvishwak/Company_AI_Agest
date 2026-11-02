@@ -106,6 +106,10 @@ DEFAULT_SYSTEM_PROMPT = SystemPrompt(
     rules=[
         "Answer only from the provided context.",
         "If you don't know, say so and point to the right team.",
+        (
+            "Address every distinct request in a multi-part message, using "
+            "separate clearly labeled sections. Do not silently omit a request."
+        ),
     ],
     version="v1",
 )

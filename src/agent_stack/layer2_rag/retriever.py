@@ -50,6 +50,11 @@ class Retriever:
             if self.store.check_staleness(source, text)
         ]
 
+    def remove_document(self, source: str) -> None:
+        """Remove a document and its chunks from the retrieval index."""
+        self._full_texts.pop(source, None)
+        self.store.remove_source(source)
+
     def retrieve(
         self,
         query: str,
@@ -57,14 +62,36 @@ class Retriever:
         allowed_roles: frozenset[str] | set[str],
         top_k: int = 3,
         fetch_k: int = 8,
+        source: str | None = None,
+        include_all_source: bool = False,
     ) -> RetrievalResult:
+        if include_all_source and source is None:
+            raise ValueError("A source is required to retrieve a complete document")
+
+        if include_all_source:
+            allowed = frozenset(allowed_roles)
+            chunks = [
+                chunk
+                for chunk in self.store._chunks.values()
+                if chunk.source == source and chunk.allowed_roles & allowed
+            ]
+            context = "\n\n".join(f"[{chunk.source}] {chunk.text}" for chunk in chunks)
+            return RetrievalResult(
+                context=context,
+                chunks=chunks,
+                stale_sources=self.stale_sources(),
+            )
+
         query_vector = self.embedder.embed(query)
         # Over-fetch, then re-rank with a lightweight keyword-overlap
         # pass, since similarity search alone can surface a chunk that
         # is semantically close but doesn't actually contain the words
         # the question is asking about.
         candidates = self.store.search(
-            query_vector, top_k=fetch_k, allowed_roles=allowed_roles
+            query_vector,
+            top_k=fetch_k,
+            allowed_roles=allowed_roles,
+            source=source,
         )
         reranked = _rerank(query, candidates)[:top_k]
 

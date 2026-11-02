@@ -60,3 +60,46 @@ def test_stale_source_detection():
     # Simulate the underlying document changing without a re-index.
     retriever._full_texts["doc1"] = "Version two of the policy, totally different."
     assert "doc1" in retriever.stale_sources()
+
+
+def test_remove_document_clears_text_chunks_and_staleness_metadata():
+    retriever = Retriever(HashEmbedder())
+    retriever.index_document("uploads/guide.txt", "Company holiday schedule.", allowed_roles={"employee"})
+
+    retriever.remove_document("uploads/guide.txt")
+
+    assert "uploads/guide.txt" not in retriever._full_texts
+    assert not any(
+        chunk.source == "uploads/guide.txt"
+        for chunk in retriever.store._chunks.values()
+    )
+    assert "uploads/guide.txt" not in retriever.stale_sources()
+    assert "uploads/guide.txt" not in retriever.store._source_hashes
+
+
+def test_source_scoped_summary_includes_every_chunk_from_only_that_document():
+    retriever = Retriever(HashEmbedder())
+    target_source = "uploads/Kushal_InfoQ_Article_Draft.docx"
+    target_text = " ".join(
+        [f"Article section{i} contains InfoQ research." for i in range(250)]
+        + ["distinctivefinalfact"]
+    )
+    retriever.index_document(
+        target_source, target_text, allowed_roles={"employee"}
+    )
+    retriever.index_document(
+        "uploads/IBM_Guide.pdf",
+        "IBM guide has unrelated information.",
+        allowed_roles={"employee"},
+    )
+
+    result = retriever.retrieve(
+        "summarize the infoQ_Article",
+        allowed_roles={"employee"},
+        source=target_source,
+        include_all_source=True,
+    )
+
+    assert result.chunks
+    assert {chunk.source for chunk in result.chunks} == {target_source}
+    assert "distinctivefinalfact" in result.context

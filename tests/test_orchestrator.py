@@ -39,6 +39,7 @@ def test_second_identical_question_is_served_from_cache():
     second = stack.handle_message(user_id="u-3", role="employee", message=question)
     assert second.cache_hit is True
     assert second.content == first.content
+    assert second.retrieval_sources == first.retrieval_sources
 
 
 def test_injection_attempt_is_flagged_and_still_cannot_reach_hr_tool():

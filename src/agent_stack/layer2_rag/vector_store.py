@@ -79,6 +79,7 @@ class InMemoryVectorStore:
     def remove_source(self, source: str) -> None:
         for chunk_id in [c.id for c in self._chunks.values() if c.source == source]:
             del self._chunks[chunk_id]
+        self._source_hashes.pop(source, None)
 
     def search(
         self,
@@ -86,6 +87,7 @@ class InMemoryVectorStore:
         *,
         top_k: int = 3,
         allowed_roles: frozenset[str] | set[str] | None = None,
+        source: str | None = None,
     ) -> list[tuple[Chunk, float]]:
         """Rank chunks by cosine similarity, filtering first by the
         requesting user's roles. Filtering happens BEFORE ranking, not
@@ -93,6 +95,8 @@ class InMemoryVectorStore:
         chance to be returned -- "ignoring permissions" is exactly the
         RAG mistake this guards against."""
         candidates = self._chunks.values()
+        if source is not None:
+            candidates = [c for c in candidates if c.source == source]
         if allowed_roles is not None:
             candidates = [
                 c for c in candidates if c.allowed_roles & frozenset(allowed_roles)
