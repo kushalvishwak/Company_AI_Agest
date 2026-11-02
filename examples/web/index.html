@@ -3,107 +3,497 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f6f8">
-  <title>Company AI Agent</title>
+  <meta name="theme-color" content="#080808">
+  <link rel="icon" href="/favicon.ico">
+  <title>kushal.ai</title>
   <style>
     :root {
-      color-scheme: light;
+      color-scheme: dark;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #20232b;
-      background: #f5f6f8;
+      color: #ececec;
+      background: #080808;
       font-synthesis: none;
       text-rendering: optimizeLegibility;
+      --sidebar-width: 280px;
+      --muted: #9a9a9a;
+      --border: #262626;
+      --panel: #1b1b1b;
+      --accent: #4c8bf5;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px 16px; }
-    .app { display: flex; flex-direction: column; width: min(820px, 100%); height: min(780px, calc(100vh - 56px)); min-height: 500px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; border-radius: 20px; box-shadow: 0 18px 55px #1e293b12; }
-    header { display: flex; align-items: center; gap: 13px; padding: 20px 24px; border-bottom: 1px solid #eceef1; }
-    .mark { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 14px; color: #fff; background: #245c4b; font-size: 19px; font-weight: 700; }
-    h1 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
-    .subtitle { display: flex; align-items: center; gap: 7px; margin: 4px 0 0; color: #747985; font-size: 12px; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: #3aa779; }
-    .chat { flex: 1; overflow-y: auto; padding: 28px 24px; }
-    .welcome { max-width: 510px; margin: 48px auto 30px; text-align: center; }
-    .welcome h2 { margin: 0 0 10px; font-size: clamp(22px, 4vw, 29px); letter-spacing: -.04em; }
-    .welcome p { margin: 0; color: #747985; font-size: 14px; line-height: 1.65; }
-    .suggestions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 21px; }
-    .suggestion { padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; color: #505661; font: inherit; font-size: 12px; cursor: pointer; }
-    .suggestion:hover { border-color: #9abdaf; color: #245c4b; }
-    .message { width: fit-content; max-width: min(570px, 88%); margin: 0 0 16px; padding: 12px 15px; border-radius: 15px; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
-    .message.user { margin-left: auto; border-bottom-right-radius: 5px; background: #245c4b; color: white; }
-    .message.assistant { border: 1px solid #eceef1; border-bottom-left-radius: 5px; background: #fafbfc; color: #292d35; }
-    .meta { margin: -9px 0 16px 3px; color: #858a94; font-size: 11px; }
-    .error { display: none; margin: 0 24px 10px; color: #a53333; font-size: 12px; }
-    form { display: flex; align-items: flex-end; gap: 10px; padding: 16px 20px 19px; border-top: 1px solid #eceef1; }
-    textarea { flex: 1; min-height: 46px; max-height: 130px; resize: vertical; padding: 13px 14px; border: 1px solid #e1e4e8; border-radius: 13px; outline: none; font: inherit; font-size: 14px; line-height: 1.45; }
-    textarea:focus { border-color: #6a9c88; box-shadow: 0 0 0 3px #245c4b12; }
-    .send { height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: #245c4b; color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .send:hover { background: #194b3b; }
+    body { width: 100vw; height: 100vh; min-width: 760px; min-height: 560px; margin: 0; overflow: hidden; }
+    button, textarea { font: inherit; }
+    button { color: inherit; }
+    .app { display: flex; width: 100%; height: 100%; background: #080808; }
+    .sidebar { display: flex; flex: 0 0 var(--sidebar-width); flex-direction: column; min-width: 0; padding: 14px 10px 0; border-right: 1px solid var(--border); background: #101010; }
+    .brand-row { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 0 5px 13px; }
+    .brand { display: flex; align-items: center; gap: 9px; color: #f5f5f5; font-size: 15px; font-weight: 650; letter-spacing: -.03em; }
+    .brand-mark { display: grid; width: 32px; height: 24px; place-items: center; border-radius: 7px; background: linear-gradient(140deg, #73c8ff, #4c8bf5 55%, #7857d9); color: #fff; font-size: 9px; font-weight: 850; letter-spacing: -.06em; }
+    .icon-button { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: #a7a7a7; cursor: pointer; }
+    .icon-button:hover, .nav-item:hover, .recent:hover { background: #242424; color: #f5f5f5; }
+    .icon-button svg, .nav-item svg, .upload-button svg, .composer-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+    .new-chat { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; margin: 1px 0 11px; padding: 0 11px; border: 0; border-radius: 11px; background: #242424; text-align: left; font-size: 13px; cursor: pointer; }
+    .new-chat:hover { background: #303030; }
+    .new-chat svg { width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+    .nav-group { margin: 1px 0 12px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #c4c4c4; text-align: left; font-size: 12px; cursor: pointer; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; margin: 13px 5px 7px; color: #d3d3d3; font-size: 12px; font-weight: 550; }
+    .section-heading .icon-button { width: 28px; height: 28px; flex-basis: 28px; }
+    .sidebar-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-color: #444 transparent; scrollbar-width: thin; }
+    .document-list, .recent-list { display: grid; gap: 2px; }
+    .document-row, .recent { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 34px; overflow: hidden; padding: 0 9px; border: 0; border-radius: 8px; background: transparent; color: #b6b6b6; text-align: left; font-size: 11px; cursor: pointer; }
+    .document-row { cursor: default; }
+    .document-row:hover { background: #1b1b1b; }
+    .document-row .document-delete { width: 26px; height: 26px; flex: 0 0 26px; margin-left: auto; opacity: 0; color: #999; }
+    .document-row:hover .document-delete, .document-row:focus-within .document-delete { opacity: 1; }
+    .document-row .document-delete:hover { background: #3a2020; color: #ff9a91; }
+    .document-row .document-delete svg { width: 15px; height: 15px; }
+    .recent-row { display: flex; align-items: center; min-width: 0; border-radius: 8px; }
+    .recent-row:hover, .recent-row:focus-within { background: #242424; }
+    .recent-row .recent { flex: 1; min-width: 0; }
+    .recent-row .icon-button { width: 28px; height: 28px; flex-basis: 28px; margin-right: 3px; }
+    .recent-row .icon-button svg { width: 14px; height: 14px; }
+    .recent-rename { width: 100%; min-width: 0; height: 30px; padding: 0 8px; border: 1px solid #4c8bf5; border-radius: 7px; outline: 0; background: #181818; color: #f0f0f0; font: inherit; font-size: 11px; }
+    .document-row span, .recent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .document-row svg { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: #8b8b8b; stroke-width: 1.6; }
+    .empty-note { margin: 4px 9px 10px; color: #777; font-size: 11px; line-height: 1.5; }
+    .recent-list { margin-bottom: 12px; }
+    .recent.active { background: #242424; color: #f0f0f0; }
+    .sidebar-footer { display: flex; align-items: center; gap: 10px; min-height: 54px; margin: 0 -10px; padding: 8px 14px; border-top: 1px solid var(--border); }
+    .avatar { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 50%; background: #d45447; color: white; font-size: 10px; font-weight: 700; }
+    .footer-label { min-width: 0; }
+    .footer-label strong, .footer-label span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .footer-label strong { font-size: 11px; font-weight: 550; }
+    .footer-label span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .sidebar.collapsed { flex-basis: 62px; align-items: center; padding-right: 7px; padding-left: 7px; }
+    .sidebar.collapsed .brand-row { justify-content: center; padding-right: 0; padding-left: 0; }
+    .sidebar.collapsed .brand, .sidebar.collapsed .brand-name, .sidebar.collapsed .new-chat span, .sidebar.collapsed .nav-item span, .sidebar.collapsed .section-heading span, .sidebar.collapsed .section-heading .icon-button, .sidebar.collapsed .document-list, .sidebar.collapsed .recent-list, .sidebar.collapsed .empty-note, .sidebar.collapsed .sidebar-footer .footer-label { display: none; }
+    .sidebar.collapsed .new-chat { justify-content: center; width: 42px; padding: 0; }
+    .sidebar.collapsed .nav-item { justify-content: center; padding: 0; }
+    .sidebar.collapsed .sidebar-footer { justify-content: center; margin: 0 -7px; padding: 8px 0; }
+    .main { position: relative; display: flex; flex: 1; min-width: 0; flex-direction: column; }
+    .topbar { display: flex; height: 50px; flex: 0 0 50px; align-items: center; justify-content: flex-end; padding: 0 20px; }
+    .model-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 360px; overflow: hidden; padding: 6px 9px; border: 1px solid #252525; border-radius: 999px; color: #a9a9a9; font-size: 10px; }
+    .model-chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .model-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #43b581; }
+    .model-dot.offline { background: #d19b45; }
+    .conversation { position: relative; display: flex; flex: 1; min-height: 0; flex-direction: column; align-items: center; overflow: hidden; }
+    .welcome { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: flex-start; width: min(760px, 100%); padding: 34px 30px 0; text-align: center; }
+    .welcome h1 { max-width: 100%; margin: 0 0 16px; padding: 4px 10px; border: 1px solid transparent; border-radius: 9px; color: #f4f4f4; font-size: 18px; font-weight: 520; letter-spacing: -.02em; overflow-wrap: anywhere; }
+    .welcome h1[contenteditable="true"] { cursor: text; }
+    .welcome h1[contenteditable="true"]:hover { border-color: #262626; }
+    .welcome h1[contenteditable="true"]:focus { border-color: #484848; outline: 0; background: #111; }
+    .suggestions { display: grid; width: min(550px, 100%); gap: 3px; }
+    .suggestion { display: flex; align-items: center; gap: 13px; min-height: 43px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: #c7c7c7; text-align: left; font-size: 12px; cursor: pointer; }
+    .suggestion:hover { background: #1b1b1b; color: #fff; }
+    .suggestion svg { width: 17px; height: 17px; flex: 0 0 17px; fill: none; stroke: #909090; stroke-width: 1.7; }
+    .messages { display: none; width: min(800px, 100%); flex: 1; overflow: auto; padding: 28px 30px 24px; scrollbar-color: #444 transparent; scrollbar-width: thin; }
+    .messages.visible { display: block; }
+    .message { width: fit-content; max-width: min(640px, 88%); margin: 0 0 18px; padding: 12px 15px; border-radius: 17px; background: #242424; color: #f0f0f0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .message.user { margin-left: auto; border-bottom-right-radius: 5px; background: #303030; }
+    .message.assistant { margin-left: 0; padding: 5px 0; background: transparent; }
+    .meta { margin: -10px 0 19px; color: #888; font-size: 10px; line-height: 1.5; }
+    .composer-area { width: min(760px, calc(100% - 48px)); margin: 0 auto; padding: 0 0 12px; }
+    .error { display: none; margin: 0 8px 8px; color: #e48c82; font-size: 11px; line-height: 1.5; }
+    .composer { display: flex; align-items: flex-end; gap: 8px; min-height: 54px; padding: 7px 8px; border: 1px solid #303030; border-radius: 28px; background: #1d1d1d; box-shadow: 0 8px 35px #0005; }
+    .composer:focus-within { border-color: #484848; }
+    .composer-button { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #c1c1c1; cursor: pointer; }
+    .composer-button:hover { background: #303030; color: white; }
+    .composer textarea { flex: 1; min-width: 0; min-height: 36px; max-height: 130px; resize: none; padding: 8px 4px; border: 0; outline: 0; background: transparent; color: #f2f2f2; font-size: 13px; line-height: 1.5; }
+    .composer textarea::placeholder { color: #a4a4a4; }
+    .send { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; }
+    .send:hover { background: #3978e3; }
     .send:disabled { opacity: .6; cursor: wait; }
-    .footnote { margin: 0; padding: 0 20px 13px; color: #969aa2; text-align: center; font-size: 10px; }
-    @media (max-width: 560px) { body { padding: 0; } .app { height: 100vh; min-height: 0; border: 0; border-radius: 0; } header { padding: 16px; } .chat { padding: 20px 16px; } .welcome { margin-top: 34px; } form { padding: 13px 12px; } .send { padding: 0 14px; } }
+    .send svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+    .footnote { margin: 8px 0 0; color: #777; text-align: center; font-size: 9px; }
+    .file-input { display: none; }
+    @media (max-width: 920px) { :root { --sidebar-width: 240px; } .welcome { padding-right: 18px; padding-left: 18px; } }
+    @media (max-width: 760px) { body { min-width: 360px; } .sidebar { flex-basis: 62px; align-items: center; padding-right: 7px; padding-left: 7px; } .brand-row { justify-content: center; padding-right: 0; padding-left: 0; } .brand-name, .brand-row > .icon-button, .new-chat span, .nav-item span, .section-heading span, .section-heading .icon-button, .document-list, .recent-list, .empty-note, .sidebar-footer .footer-label { display: none; } .new-chat { justify-content: center; width: 42px; padding: 0; } .nav-item { justify-content: center; padding: 0; } .sidebar-footer { justify-content: center; margin: 0 -7px; padding: 8px 0; } .topbar { padding-right: 12px; } .composer-area { width: calc(100% - 24px); } .welcome { padding-right: 12px; padding-left: 12px; } }
   </style>
 </head>
 <body>
   <main class="app">
-    <header>
-      <div class="mark" aria-hidden="true">A</div>
-      <div>
-        <h1>Company AI Agent</h1>
-        <p class="subtitle"><span class="dot"></span> Online · Offline demo</p>
+    <aside class="sidebar">
+      <div class="brand-row">
+        <div class="brand"><span class="brand-mark">KAI</span><span class="brand-name">kushal.ai</span></div>
+        <button class="icon-button" id="collapse-sidebar" type="button" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"></rect><path d="M9 4v16"></path></svg>
+        </button>
       </div>
-    </header>
-    <section class="chat" id="chat" aria-live="polite">
-      <div class="welcome" id="welcome">
-        <h2>How can I help?</h2>
-        <p>Ask a question about company policies, or try a leave request. The demo agent runs locally with sample HR data.</p>
-        <div class="suggestions">
-          <button class="suggestion" type="button">How many days of annual leave do I get?</button>
-          <button class="suggestion" type="button">What is the IT device policy?</button>
-          <button class="suggestion" type="button">Please apply my leave for 2-4 Nov</button>
+      <button class="new-chat" id="new-chat" type="button">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>
+        <span>New chat</span>
+      </button>
+      <nav class="nav-group" aria-label="Main navigation">
+        <button class="nav-item" id="documents-nav" type="button">
+          <svg viewBox="0 0 24 24"><path d="M5 4.5h10l4 4v11H5z"></path><path d="M15 4.5v4h4M8 13h8M8 16.5h8"></path></svg>
+          <span>Documents</span>
+        </button>
+      </nav>
+      <div class="sidebar-scroll">
+        <section>
+          <div class="section-heading"><span>Your documents</span>
+            <button class="icon-button" id="upload-trigger" type="button" aria-label="Add documents">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+          </div>
+          <div class="document-list" id="document-list"></div>
+          <p class="empty-note" id="document-empty">Add PDF, Word, Excel, CSV or text files to ask questions about them.</p>
+        </section>
+        <section>
+          <div class="section-heading"><span>Recents</span></div>
+          <div class="recent-list" id="recent-list"></div>
+          <p class="empty-note" id="recent-empty">Your conversations will appear here.</p>
+        </section>
+      </div>
+      <div class="sidebar-footer">
+        <div class="avatar">K</div>
+        <div class="footer-label"><strong>Kushal</strong><span>Groq cloud model</span></div>
+      </div>
+      <input class="file-input" id="files" type="file" multiple accept=".txt,.md,.csv,.xlsx,.pdf,.docx">
+    </aside>
+    <section class="main">
+      <div class="topbar">
+        <div class="model-chip" title="Groq model status">
+          <span class="model-dot" id="model-dot"></span>
+          <span id="model-status">Checking Groq…</span>
+        </div>
+      </div>
+      <div class="conversation">
+        <section class="welcome" id="welcome">
+          <h1 id="project-name" contenteditable="true" role="textbox" aria-label="Project name" aria-multiline="false" spellcheck="false" title="Click to rename this project">Ready when you are.</h1>
+          <div class="suggestions">
+            <button class="suggestion" type="button" data-prompt="What can you tell me from my uploaded documents?">
+              <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 9h8M8 13h8M8 17h5"></path></svg>
+              Ask about your documents
+            </button>
+            <button class="suggestion" type="button" data-prompt="Summarize the key points in my uploaded documents.">
+              <svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h9M5 20h9"></path></svg>
+              Summarize a document
+            </button>
+            <button class="suggestion" type="button" data-prompt="How many days of annual leave do I get?">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg>
+              Ask about annual leave
+            </button>
+          </div>
+        </section>
+        <div class="messages" id="messages" aria-live="polite"></div>
+        <div class="composer-area">
+          <p class="error" id="error" role="alert"></p>
+          <form class="composer" id="form">
+            <button class="composer-button" id="attach" type="button" aria-label="Add documents">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+            <textarea id="input" aria-label="Message kushal.ai" placeholder="Ask anything" maxlength="8000" rows="1"></textarea>
+            <button class="send" id="send" type="submit" aria-label="Send message">
+              <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+            </button>
+          </form>
+          <p class="footnote">Questions and relevant document text are sent to Groq. Your files and document index stay on this computer.</p>
         </div>
       </div>
     </section>
-    <p class="error" id="error" role="alert"></p>
-    <form id="form">
-      <textarea id="input" aria-label="Message" placeholder="Message the agent…" maxlength="8000" required></textarea>
-      <button class="send" id="send" type="submit">Send</button>
-    </form>
-    <p class="footnote">Demo assistant · Responses use the project's local mock model and sample policies</p>
   </main>
   <script>
-    const chat = document.querySelector("#chat");
     const form = document.querySelector("#form");
     const input = document.querySelector("#input");
     const send = document.querySelector("#send");
     const error = document.querySelector("#error");
+    const files = document.querySelector("#files");
+    const messages = document.querySelector("#messages");
+    const welcome = document.querySelector("#welcome");
+    const documentList = document.querySelector("#document-list");
+    const documentEmpty = document.querySelector("#document-empty");
+    const recentList = document.querySelector("#recent-list");
+    const recentEmpty = document.querySelector("#recent-empty");
+    const projectName = document.querySelector("#project-name");
+    const defaultProjectName = "Ready when you are.";
+    const conversations = [];
+    let activeConversation = null;
+    projectName.textContent = localStorage.getItem("kushal-ai-project-name") || defaultProjectName;
+
+    function showError(text) {
+      error.textContent = text;
+      error.style.display = "block";
+    }
 
     function addMessage(text, kind) {
       const message = document.createElement("div");
       message.className = `message ${kind}`;
       message.textContent = text;
-      chat.append(message);
+      messages.append(message);
       return message;
     }
 
+    function beginConversation() {
+      if (activeConversation) return activeConversation;
+      activeConversation = { title: "New chat", messages: [] };
+      conversations.unshift(activeConversation);
+      renderRecents();
+      welcome.hidden = true;
+      messages.classList.add("visible");
+      return activeConversation;
+    }
+
+    function renderRecents() {
+      recentList.replaceChildren();
+      recentEmpty.hidden = conversations.length > 0;
+      conversations.forEach((conversation) => {
+        const row = document.createElement("div");
+        row.className = "recent-row";
+        const button = document.createElement("button");
+        button.className = `recent${conversation === activeConversation ? " active" : ""}`;
+        button.type = "button";
+        const label = document.createElement("span");
+        label.textContent = conversation.title;
+        button.append(label);
+        button.addEventListener("click", () => selectConversation(conversation));
+        const rename = document.createElement("button");
+        rename.className = "icon-button";
+        rename.type = "button";
+        rename.setAttribute("aria-label", `Rename ${conversation.title}`);
+        rename.title = "Rename chat";
+        rename.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>';
+        rename.addEventListener("click", () => startRenamingConversation(row, conversation));
+        row.append(button, rename);
+        recentList.append(row);
+      });
+    }
+
+    function startRenamingConversation(row, conversation) {
+      const input = document.createElement("input");
+      input.className = "recent-rename";
+      input.type = "text";
+      input.maxLength = 80;
+      input.value = conversation.title;
+      input.setAttribute("aria-label", "Chat name");
+      row.replaceChildren(input);
+      input.focus();
+      input.select();
+
+      let finished = false;
+      const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        const title = input.value.trim();
+        if (save && title) conversation.title = title;
+        renderRecents();
+      };
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finish(true);
+        } else if (event.key === "Escape") {
+          finish(false);
+        }
+      });
+      input.addEventListener("blur", () => finish(true));
+    }
+
+    function selectConversation(conversation) {
+      activeConversation = conversation;
+      messages.replaceChildren();
+      welcome.hidden = true;
+      messages.classList.add("visible");
+      conversation.messages.forEach((item) => {
+        if (item.kind === "meta") {
+          addMeta(item.meta);
+        } else {
+          addMessage(item.text, item.kind);
+        }
+      });
+      renderRecents();
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addMeta(text) {
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = text;
+      messages.append(meta);
+    }
+
+    function resetChat() {
+      activeConversation = null;
+      messages.replaceChildren();
+      messages.classList.remove("visible");
+      welcome.hidden = false;
+      error.style.display = "none";
+      renderRecents();
+      input.focus();
+    }
+
+    async function refreshDocuments() {
+      try {
+        const response = await fetch("/api/documents");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load documents.");
+        renderDocuments(data);
+      } catch (requestError) {
+        if (requestError instanceof TypeError) showServerUnavailable();
+      }
+    }
+
+    function renderDocuments(data) {
+      documentList.replaceChildren();
+      const indexed = new Set(data.indexed_documents);
+      documentEmpty.hidden = data.documents.length > 0;
+      data.documents.forEach((name) => {
+        const row = document.createElement("div");
+        row.className = "document-row";
+        row.title = indexed.has(name) ? "Indexed and ready" : "Saved, waiting to index";
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", "M6 3.5h8l4 4v13H6zM14 3.5v4h4M9 12h6M9 15.5h6");
+        icon.append(path);
+        const label = document.createElement("span");
+        label.textContent = name;
+        const remove = document.createElement("button");
+        remove.className = "icon-button document-delete";
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Delete ${name}`);
+        remove.title = "Delete document";
+        remove.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"></path></svg>';
+        remove.addEventListener("click", async () => {
+          if (!window.confirm(`Delete "${name}" from your documents? This cannot be undone.`)) return;
+          remove.disabled = true;
+          try {
+            const response = await fetch(`/api/documents?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Could not delete this document.");
+            await refreshDocuments();
+          } catch (deleteError) {
+            showError(errorMessage(deleteError));
+            remove.disabled = false;
+          }
+        });
+        row.append(icon, label, remove);
+        documentList.append(row);
+      });
+    }
+
+    function showServerUnavailable() {
+      showError("The local agent is not responding. Close and reopen kushal.ai, then try again.");
+      document.querySelector("#model-status").textContent = "Agent offline";
+      document.querySelector("#model-dot").classList.add("offline");
+    }
+
+    function errorMessage(requestError) {
+      if (requestError instanceof TypeError) {
+        showServerUnavailable();
+        return "The connection to the local agent was lost.";
+      }
+      return requestError.message || "The request failed.";
+    }
+
+    async function refreshModelStatus() {
+      const label = document.querySelector("#model-status");
+      const dot = document.querySelector("#model-dot");
+      try {
+        const response = await fetch("/api/status");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Local model is not ready.");
+        label.textContent = `Ready · ${data.chat_model}`;
+        dot.classList.remove("offline");
+      } catch (statusError) {
+        if (statusError instanceof TypeError) {
+          showServerUnavailable();
+        } else {
+          label.textContent = `Groq setup needed · ${statusError.message}`;
+          dot.classList.add("offline");
+        }
+      }
+    }
+
+    async function uploadSelectedFiles() {
+      if (!files.files.length) return;
+      const selected = [...files.files];
+      const oversized = selected.find((file) => file.size > 20 * 1024 * 1024);
+      if (oversized || selected.reduce((total, file) => total + file.size, 0) > 40 * 1024 * 1024) {
+        showError(oversized ? `${oversized.name} exceeds the 20 MB per-file limit.` : "The selected files exceed the 40 MB upload limit.");
+        files.value = "";
+        return;
+      }
+      error.style.display = "none";
+      documentEmpty.textContent = `Adding ${selected.length} document(s)…`;
+      documentEmpty.hidden = false;
+      const formData = new FormData();
+      selected.forEach((file) => formData.append("files", file));
+      try {
+        const response = await fetch("/api/documents", { method: "POST", body: formData });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Document upload failed.");
+        await refreshDocuments();
+      } catch (uploadError) {
+        showError(errorMessage(uploadError));
+        documentEmpty.textContent = "Add PDF, Word, Excel, CSV or text files to ask questions about them.";
+      } finally {
+        files.value = "";
+      }
+    }
+
+    document.querySelector("#new-chat").addEventListener("click", resetChat);
+    projectName.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        projectName.blur();
+      } else if (event.key === "Escape") {
+        projectName.textContent = localStorage.getItem("kushal-ai-project-name") || defaultProjectName;
+        projectName.blur();
+      }
+    });
+    projectName.addEventListener("blur", () => {
+      const name = projectName.textContent.trim() || defaultProjectName;
+      projectName.textContent = name;
+      if (name === defaultProjectName) {
+        localStorage.removeItem("kushal-ai-project-name");
+      } else {
+        localStorage.setItem("kushal-ai-project-name", name);
+      }
+    });
+    document.querySelector("#attach").addEventListener("click", () => files.click());
+    document.querySelector("#upload-trigger").addEventListener("click", () => files.click());
+    document.querySelector("#documents-nav").addEventListener("click", () => files.click());
+    document.querySelector("#collapse-sidebar").addEventListener("click", () => {
+      document.querySelector(".sidebar").classList.toggle("collapsed");
+    });
     document.querySelectorAll(".suggestion").forEach((button) => {
       button.addEventListener("click", () => {
-        input.value = button.textContent;
+        input.value = button.dataset.prompt;
         form.requestSubmit();
       });
+    });
+    files.addEventListener("change", uploadSelectedFiles);
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(input.scrollHeight, 130)}px`;
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
     });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = input.value.trim();
       if (!text || send.disabled) return;
-
-      document.querySelector("#welcome")?.remove();
+      const conversation = beginConversation();
+      if (conversation.messages.length === 0) {
+        const name = projectName.textContent.trim();
+        conversation.title = name && name !== defaultProjectName
+          ? name
+          : text.length > 34 ? `${text.slice(0, 34)}…` : text;
+        renderRecents();
+      }
+      conversation.messages.push({ text, kind: "user" });
       addMessage(text, "user");
       input.value = "";
+      input.style.height = "auto";
       error.style.display = "none";
       send.disabled = true;
-      send.textContent = "…";
 
       try {
         const response = await fetch("/api/chat", {
@@ -113,28 +503,32 @@
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "The agent request failed.");
-
+        conversation.messages.push({ text: data.content, kind: "assistant" });
         addMessage(data.content, "assistant");
         const details = [];
         if (data.retrieval_sources.length) details.push(`Sources: ${[...new Set(data.retrieval_sources)].join(", ")}`);
         if (data.cache_hit) details.push("Answered from cache");
         if (data.guardrail_flagged) details.push("Guardrail flagged this message");
         if (details.length) {
-          const meta = document.createElement("p");
-          meta.className = "meta";
-          meta.textContent = details.join(" · ");
-          chat.append(meta);
+          const meta = details.join(" · ");
+          conversation.messages.push({ text: "", kind: "meta", meta });
+          addMeta(meta);
         }
       } catch (requestError) {
-        error.textContent = requestError.message;
-        error.style.display = "block";
+        showError(errorMessage(requestError));
       } finally {
         send.disabled = false;
-        send.textContent = "Send";
         input.focus();
-        chat.scrollTop = chat.scrollHeight;
+        messages.scrollTop = messages.scrollHeight;
       }
     });
+
+    refreshDocuments();
+    refreshModelStatus();
+    window.setInterval(() => {
+      refreshModelStatus();
+      refreshDocuments();
+    }, 10000);
   </script>
 </body>
 </html>

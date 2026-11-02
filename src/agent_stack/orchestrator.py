@@ -15,6 +15,7 @@ bottom as the "shape of the problem" diagram turned into code.
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass, field
 
 from .layer1_identity import DEFAULT_SYSTEM_PROMPT, LLMClient, MockLLM, SystemPrompt
@@ -89,11 +90,34 @@ class AgentStack:
     # -- the request pipeline -----------------------------------------
 
     def handle_message(
-        self, *, user_id: str, role: str, message: str, token: str | None = None
+        self,
+        *,
+        user_id: str,
+        role: str,
+        message: str,
+        token: str | None = None,
+        document_source: str | None = None,
+        document_sources: list[str] | None = None,
+        full_document_sources: list[str] | None = None,
     ) -> AgentResponse:
         trace = self.tracer.start_trace(user_id)
         token = token or self.issue_token(user_id, role)
         trace.record("auth.token_issued_or_provided", role=role)
+        selected_sources = list(dict.fromkeys(document_sources or []))
+        if document_source and document_source not in selected_sources:
+            selected_sources.append(document_source)
+        if document_source and document_sources is None:
+            full_document_sources = list(full_document_sources or [])
+            if re.search(
+                r"\b(?:summarize|summarise|summary|overview)\b", message, re.I
+            ):
+                full_document_sources.append(document_source)
+        full_sources = set(full_document_sources or [])
+        cache_scope = (
+            f"{user_id}:{'|'.join(selected_sources)}"
+            if selected_sources
+            else user_id
+        )
 
         # A plain "confirm"/"yes" continues a pending write action
         # instead of starting a new turn. This is the two-step
@@ -130,7 +154,7 @@ class AgentStack:
         # Layer 6 (cache half): skip on flagged input.
         cache_hit = None
         if not verdict.is_suspicious:
-            cache_hit = self.cache.lookup(message, user_scope=user_id)
+            cache_hit = self.cache.lookup(message, user_scope=cache_scope)
         if cache_hit is not None:
             trace.record("cache.hit", similarity=cache_hit.similarity)
             trace.finish()
@@ -139,6 +163,7 @@ class AgentStack:
                 trace_id=trace.trace_id,
                 routed_model="n/a (cache hit)",
                 cache_hit=True,
+                retrieval_sources=cache_hit.sources,
                 guardrail_flagged=verdict.is_suspicious,
             )
         trace.record("cache.miss")
@@ -151,10 +176,50 @@ class AgentStack:
 
         # Layer 2: retrieve context the caller's role is allowed to see.
         accessible_roles = roles_at_or_below(role)
-        retrieval = self.retriever.retrieve(message, allowed_roles=accessible_roles)
-        if retrieval.stale_sources:
-            trace.record("rag.stale_index", sources=retrieval.stale_sources)
-        trace.record("rag.retrieved", sources=[c.source for c in retrieval.chunks])
+        is_summary_request = bool(
+            re.search(r"\b(?:summarize|summarise|summary|overview)\b", message, re.I)
+        )
+        if selected_sources:
+            retrievals = [
+                self.retriever.retrieve(
+                    message,
+                    allowed_roles=accessible_roles,
+                    source=source,
+                    include_all_source=(
+                        source in full_sources
+                        or (
+                            source == document_source
+                            and document_sources is None
+                            and is_summary_request
+                        )
+                    ),
+                )
+                for source in selected_sources
+            ]
+            context = "\n\n".join(
+                result.context for result in retrievals if result.context
+            )
+            chunks = [chunk for result in retrievals for chunk in result.chunks]
+            stale_sources = list(
+                dict.fromkeys(
+                    source
+                    for result in retrievals
+                    for source in result.stale_sources
+                )
+            )
+        else:
+            retrieval = self.retriever.retrieve(
+                message,
+                allowed_roles=accessible_roles,
+            )
+            context = retrieval.context
+            chunks = retrieval.chunks
+            stale_sources = retrieval.stale_sources
+
+        retrieval_sources = list(dict.fromkeys(c.source for c in chunks))
+        if stale_sources:
+            trace.record("rag.stale_index", sources=stale_sources)
+        trace.record("rag.retrieved", sources=retrieval_sources)
 
         # Layer 1 + Layer 3: ask the model, offering it the tools this
         # role is allowed to even attempt (final enforcement still
@@ -163,7 +228,7 @@ class AgentStack:
         response = self.llm.complete(
             system_prompt=self.system_prompt.render(),
             user_message=message,
-            context=retrieval.context or None,
+            context=context or None,
             tools=tools,
         )
         trace.total_tokens += response.usage_tokens
@@ -192,7 +257,7 @@ class AgentStack:
                 trace_id=trace.trace_id,
                 routed_model=routing.model,
                 cache_hit=False,
-                retrieval_sources=[c.source for c in retrieval.chunks],
+                retrieval_sources=retrieval_sources,
                 tool_call={
                     "name": response.tool_call.name,
                     "arguments": response.tool_call.arguments,
@@ -211,14 +276,19 @@ class AgentStack:
         # and scoped to this user so permission-dependent answers never
         # cross users.
         if not verdict.is_suspicious:
-            self.cache.put(message, content, user_scope=user_id)
+            self.cache.put(
+                message,
+                content,
+                user_scope=cache_scope,
+                sources=retrieval_sources,
+            )
 
         return AgentResponse(
             content=content,
             trace_id=trace.trace_id,
             routed_model=routing.model,
             cache_hit=False,
-            retrieval_sources=[c.source for c in retrieval.chunks],
+            retrieval_sources=retrieval_sources,
             guardrail_flagged=verdict.is_suspicious,
         )
 
@@ -233,14 +303,21 @@ def _tool_result_to_text(tool_name: str, result) -> str:
     return "Something went wrong running that action."
 
 
-def bootstrap() -> AgentStack:
+def bootstrap(
+    *,
+    llm: LLMClient | None = None,
+    embedder: Embedder | None = None,
+) -> AgentStack:
     """Build a fully wired AgentStack with the mock (offline) LLM and
     embedder, and the sample HR documents from data/hr_docs indexed.
     This is what the demo script and the tests use."""
     import pathlib
 
-    stack = AgentStack()
-    data_dir = pathlib.Path(__file__).resolve().parents[2] / "data" / "hr_docs"
+    stack = AgentStack(llm=llm, embedder=embedder)
+    if getattr(sys, "frozen", False):
+        data_dir = pathlib.Path(sys._MEIPASS) / "data" / "hr_docs"
+    else:
+        data_dir = pathlib.Path(__file__).resolve().parents[2] / "data" / "hr_docs"
     for doc_path in sorted(data_dir.glob("*.md")):
         text = doc_path.read_text(encoding="utf-8")
         # Chunking joins text back into single-line chunks (see

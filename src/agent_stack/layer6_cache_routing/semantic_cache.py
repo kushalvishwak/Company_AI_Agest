@@ -32,6 +32,7 @@ class CacheEntry:
     answer: str
     user_scope: str | None
     cached_at: float
+    sources: list[str]
 
 
 @dataclass
@@ -39,6 +40,7 @@ class CacheHit:
     answer: str
     similarity: float
     original_query: str
+    sources: list[str]
 
 
 class SemanticCache:
@@ -65,10 +67,18 @@ class SemanticCache:
                 answer=best_entry.answer,
                 similarity=best_score,
                 original_query=best_entry.query,
+                sources=list(best_entry.sources),
             )
         return None
 
-    def put(self, query: str, answer: str, *, user_scope: str | None = None) -> None:
+    def put(
+        self,
+        query: str,
+        answer: str,
+        *,
+        user_scope: str | None = None,
+        sources: list[str] | None = None,
+    ) -> None:
         self._entries.append(
             CacheEntry(
                 query=query,
@@ -76,8 +86,12 @@ class SemanticCache:
                 answer=answer,
                 user_scope=user_scope,
                 cached_at=time.time(),
+                sources=list(sources or []),
             )
         )
+
+    def clear(self) -> None:
+        self._entries.clear()
 
     def __len__(self) -> int:
         return len(self._entries)

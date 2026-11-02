@@ -29,5 +29,12 @@ def test_redact_pii_covers_email_phone_and_salary():
     redacted = redact_pii(text)
     assert "asha@example.com" not in redacted
     assert "9876543210" not in redacted
+    assert "1800000" not in redacted
     assert "[REDACTED:EMAIL]" in redacted
     assert "[REDACTED:PHONE]" in redacted
+
+
+def test_redact_pii_preserves_non_salary_currency_amounts():
+    assert redact_pii("Taxi reimbursement is INR 850 per trip.") == (
+        "Taxi reimbursement is INR 850 per trip."
+    )

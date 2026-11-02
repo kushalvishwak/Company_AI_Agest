@@ -22,7 +22,9 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     (
         "SALARY",
         re.compile(
-            r"(?i)(?:₹|rs\.?|inr)\s?[\d,]+(?:\.\d+)?\s?(?:lpa|lakhs?|per annum)?"
+            r"(?i)\b(?:salary(?:[_\s-]?inr)?|compensation)\b\s*"
+            r"(?:(?:is|was|of)\s*)?(?:₹|rs\.?|inr)?\s?"
+            r"[\d,]+(?:\.\d+)?\s?(?:lpa|lakhs?|per annum)?"
         ),
     ),
     ("ID_NUMBER", re.compile(r"\b(?:emp-|ssn-|aadhaar-)?\d{4,}\b", re.IGNORECASE)),

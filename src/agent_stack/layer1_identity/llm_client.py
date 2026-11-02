@@ -10,9 +10,8 @@ Two implementations are provided behind the same `LLMClient` interface:
                    it is just enough pattern-matching to exercise every
                    layer (grounding, tool calls, refusals) predictably.
   - `OpenAICompatibleLLM` -- a thin HTTP client for any OpenAI-compatible
-                   chat-completions endpoint (OpenAI, Azure OpenAI, a
-                   self-hosted vLLM/Ollama server, etc). Used when
-                   `OPENAI_API_KEY` is set.
+                   chat-completions endpoint. `GroqLLM` specializes this
+                   client for the Groq API.
 
 Swap one for the other without touching any other layer.
 """
@@ -187,9 +186,9 @@ def _best_matching_sentence(question: str, context: str) -> str | None:
 class OpenAICompatibleLLM(LLMClient):
     """
     Minimal HTTP client for an OpenAI-compatible chat-completions API.
-    Works against OpenAI itself, Azure OpenAI, or a self-hosted
-    OpenAI-compatible server (vLLM, Ollama's OpenAI shim, etc) by
-    pointing `base_url` at it.
+    Works with OpenAI-compatible chat-completions endpoints by pointing
+    `base_url` at the service. `GroqLLM` supplies Groq's endpoint and
+    environment-variable defaults.
 
     Requires the `requests` package and an API key. Reads
     `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` from the
@@ -201,7 +200,7 @@ class OpenAICompatibleLLM(LLMClient):
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
-        timeout_s: float = 30.0,
+        timeout_s: float = 180.0,
     ) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
@@ -212,7 +211,7 @@ class OpenAICompatibleLLM(LLMClient):
             )
         self.base_url = (base_url or os.environ.get("OPENAI_BASE_URL") or
                           "https://api.openai.com/v1").rstrip("/")
-        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5.5")
         self.timeout_s = timeout_s
 
     def complete(
@@ -275,4 +274,32 @@ class OpenAICompatibleLLM(LLMClient):
             )
         return LLMResponse(
             content=choice.get("content"), model=self.model, usage_tokens=usage
+        )
+
+
+class GroqLLM(OpenAICompatibleLLM):
+    """Chat completions using Groq's OpenAI-compatible API."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        timeout_s: float = 180.0,
+    ) -> None:
+        key = api_key or os.environ.get("GROQ_API_KEY")
+        if not key:
+            raise RuntimeError(
+                "GroqLLM requires an API key. Set GROQ_API_KEY or enter it "
+                "when launching the desktop app."
+            )
+        super().__init__(
+            api_key=key,
+            base_url=(
+                base_url
+                or os.environ.get("GROQ_BASE_URL")
+                or "https://api.groq.com/openai/v1"
+            ),
+            model=model or os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+            timeout_s=timeout_s,
         )
